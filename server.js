@@ -15,6 +15,8 @@ const HIST = path.join(__dirname, "history.json");
 let CARDS   = JSON.parse(fs.readFileSync(fs.existsSync(LIVE) ? LIVE : SEED, "utf8"));
 let HISTORY = fs.existsSync(HIST) ? JSON.parse(fs.readFileSync(HIST, "utf8")) : [];
 let rev = 1;
+let lastExport = fs.existsSync(path.join(__dirname,"last-export.txt"))
+  ? Number(fs.readFileSync(path.join(__dirname,"last-export.txt"),"utf8")) : 0;
 
 /* מי מחובר, ומה כל אחד עורך כרגע */
 const users = new Map();     // name -> { seen, editing }
@@ -132,6 +134,18 @@ const A = {
     rev++; persist(); push("undo");
     return { ok: true };
   },
+  import: function ({ who, cards }) {
+    if (!Array.isArray(cards) || cards.length < 20) return { err: "הקובץ לא נראה תקין" };
+    const bad = cards.find(c => !c || !c.id || !c.name);
+    if (bad) return { err: "יש קלף בלי מזהה או שם" };
+    const n = CARDS.length;
+    CARDS = cards;
+    HISTORY.push({ t: Date.now(), who, id: "-", name: "כל החפיסה", field: "—",
+                   before: `${n} קלפים`, after: `יובא קובץ · ${cards.length} קלפים` });
+    rev++; persist(); push("import");
+    return { ok: true, n: cards.length, was: n };
+  },
+
   restore({ who, cards }) {                   /* שחזור מגיבוי הדפדפן */
     if (!Array.isArray(cards) || cards.length < 50) return { err: "גיבוי לא תקין" };
     CARDS = cards;
@@ -164,10 +178,12 @@ http.createServer((req, res) => {
     return;
   }
 
-  if (u.pathname === "/cards") return json({ rev, cards: CARDS,
+  if (u.pathname === "/cards") return json({ rev, cards: CARDS, lastExport,
     users: [...users.keys()], locks: [...locks.entries()].map(([k,v]) => ({ key:k, who:v.who })) });
   if (u.pathname === "/history") return json({ history: HISTORY.slice(-200).reverse() });
   if (u.pathname === "/export") {
+    lastExport = Date.now();
+    try { fs.writeFileSync(path.join(__dirname,"last-export.txt"), String(lastExport)); } catch {}
     res.writeHead(200, {"Content-Type":"application/json; charset=utf-8",
       "Content-Disposition":`attachment; filename=cards-${new Date().toISOString().slice(0,10)}.json`});
     return res.end(JSON.stringify(CARDS, null, 1));
