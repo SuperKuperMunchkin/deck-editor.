@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>עורך החפיסה — סופר מנצקין</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;800&family=Suez+One&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0E1A14;color:#FBF3DF;font-family:'Assistant',system-ui,sans-serif;
+ font-size:17px;padding:1rem 1rem 4rem;min-height:100vh}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid #E8B317;outline-offset:2px}
+
+#gate{display:grid;place-items:center;min-height:80vh}
+.gbox{background:#161F1A;border:2px solid #3B3428;border-radius:16px;padding:2rem;max-width:340px;width:100%;text-align:center}
+h1{font-family:'Suez One',serif;font-size:1.4rem;color:#E8B317}
+.sub{color:#7A9488;font-size:.9rem;font-weight:400}
+.bar{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin:.8rem 0 1.2rem}
+input,select{background:#161F1A;border:1.5px solid #3B3428;border-radius:8px;color:#FBF3DF;
+ padding:.5rem .75rem;font-size:.95rem}
+.btn{background:none;border:1.5px solid #3B3428;color:#B8CFC2;border-radius:8px;
+ padding:.45rem .8rem;font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#E8B317;color:#E8B317}
+.btn.on{background:#E8B317;color:#1A1409;border:0;font-weight:800}
+.btn.g{background:#2D6A4F;color:#FBF3DF;border:0}
+
+h2{font-size:1.1rem;color:#E8B317;margin:1.8rem 0 .7rem;display:flex;gap:.6rem;align-items:center}
+h2 s{color:#5F7A6E;font-size:.85rem;font-weight:400;text-decoration:none}
+h2 i{flex:1;height:1px;background:#2A3830}
+
+/* קלפים גדולים. הגובה נקבע לפי התוכן — שום דבר לא נחתך ולא נגלל. */
+.grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));align-items:start}
+.c{background:#161F1A;border:2px solid #7E2216;border-radius:13px;padding:1rem 1.1rem;
+ display:flex;flex-direction:column;gap:.55rem;position:relative}
+.c.tre{border-color:#8A6512}
+.c.locked{opacity:.72}
+.hd{display:flex;align-items:flex-start;gap:.6rem}
+.art{font-size:1.9rem;line-height:1;cursor:pointer;min-width:1.6rem;text-align:center}
+.nm{font-size:1.22rem;font-weight:800;line-height:1.3;flex:1}
+.tags{display:flex;gap:.3rem;flex-wrap:wrap}
+.t{border-radius:6px;padding:.15rem .5rem;font-size:.82rem;white-space:nowrap;cursor:pointer;
+ display:inline-flex;gap:.2rem;align-items:center}
+.t.g{background:#122A1C;color:#A8DCA4}.t.r{background:#3A1A14;color:#E08B76}
+.t.y{background:#3D3410;color:#E8C868}.t.n{background:#1C1812;color:#9DB8A8}
+.t.add{background:none;border:1px dashed #3B3428;color:#5F7A6E}
+.tx{line-height:1.5;color:#C9D8CF}
+.bad{line-height:1.45;color:#E08B76}
+.fn{line-height:1.45;color:#7A9488;font-style:italic}
+[contenteditable]{outline:none;border-radius:5px;padding:.1rem .3rem;margin:-.1rem -.3rem;
+ white-space:pre-wrap;word-break:break-word}
+[contenteditable]:hover{background:#ffffff0d}
+[contenteditable]:focus{background:#ffffff14;box-shadow:inset 0 0 0 1.5px #E8B31788}
+.lockbadge{position:absolute;top:-.6rem;left:.8rem;background:#7A2E1E;color:#F0C0B0;
+ font-size:.72rem;font-weight:700;padding:.1rem .5rem;border-radius:5px}
+.del{background:none;border:0;color:#4A5F54;cursor:pointer;font-size:1rem;padding:0 .25rem}
+.del:hover{color:#E08B76}
+
+#status{position:fixed;top:0;right:0;left:0;background:#12211A;border-bottom:1.5px solid #3B3428;
+ padding:.4rem .9rem;font-size:.85rem;display:flex;gap:.8rem;align-items:center;z-index:30}
+.dot{width:8px;height:8px;border-radius:50%;background:#5E9E5A;display:inline-block}
+.dot.off{background:#C4553F}
+#log{position:fixed;bottom:.6rem;inset-inline-start:.6rem;width:min(420px,92vw);max-height:46vh;
+ overflow-y:auto;background:#12211Af7;border:1.5px solid #3B3428;border-radius:12px;padding:.8rem;
+ font-size:.85rem;line-height:1.5;display:none;z-index:40}
+#log div{padding:.3rem 0;border-bottom:1px solid #ffffff10;color:#9DB8A8}
+#log b{color:#E8B317}
+#logb{position:fixed;bottom:.6rem;inset-inline-start:.6rem;z-index:41}
+#toast{position:fixed;top:2.6rem;left:50%;transform:translateX(-50%);background:#E8B317;
+ color:#1A1409;padding:.5rem 1.1rem;border-radius:9px;font-weight:700;font-size:.9rem;
+ z-index:90;display:none;max-width:90vw;text-align:center}
+#toast.err{background:#7A2E1E;color:#F0C0B0}
+</style>
+</head>
+<body>
+
+<div id="gate"><div class="gbox">
+  <h1>עורך החפיסה</h1>
+  <p class="sub" style="margin:.6rem 0 1.3rem">כולם עורכים יחד. כל שינוי נשמר מיד ונרשם.</p>
+  <input id="nm" placeholder="השם שלך" maxlength="14" style="width:100%;text-align:center;margin-bottom:.8rem">
+  <button class="btn on" style="width:100%;padding:.75rem" onclick="join()">כניסה</button>
+</div></div>
+
+<div id="app" style="display:none">
+  <div id="status">
+    <span><span class="dot" id="conn"></span> <span id="connTxt">מחובר</span></span>
+    <span id="who"></span>
+    <span style="flex:1"></span>
+    <span class="sub" id="cnt"></span>
+  </div>
+
+  <div style="height:2.2rem"></div>
+  <h1>סופר מנצקין־אסטרייכר</h1>
+
+  <div class="bar">
+    <input id="q" placeholder="חיפוש בשם ובטקסט…" oninput="draw()" style="min-width:210px">
+    <span id="types"></span>
+    <span style="flex:1"></span>
+    <button class="btn g" onclick="go('add')">+ קלף</button>
+    <button class="btn" onclick="go('undo')">↶ בטל</button>
+    <button class="btn" onclick="location.href='/export'">ייצוא</button>
+    <button class="btn" onclick="sendToGame()">שלח למשחק</button>
+  </div>
+  <div id="out"></div>
+</div>
+
+<button class="btn" id="logb" onclick="tog()">היסטוריה</button>
+<div id="log"></div>
+<div id="toast"></div>
+
+<script>
+let ME=localStorage.getItem("de-name")||"", CARDS=[], REV=0, TYPE="all", LOCKS={}, USERS=[];
+let EDITING=null;                       /* המפתח שאני עורך כרגע */
+const TY={monster:"מפלצות",item:"חפצים",curse:"קללות",trap:"מלכודות",oneshot:"חד פעמיים",
+ ability:"יכולות",exemption:"פטורים",special:"עלה דרגה",class:"מקצועות",trait:"אופי",
+ base:"בסיסים",enhancer:"מחזקים",weakener:"מחלישים",origin:"סיפורי מקור",rule:"כללי בית"};
+const ORDER=Object.keys(TY);
+const SLOTS=["יד אחת","שתי ידיים","שריון","כיסוי ראש","נעליים","שסתום","ללא מיקום"];
+const BANDS=[[1,4,"רמות 1–4"],[5,8,"רמות 5–8"],[9,12,"רמות 9–12"],[13,16,"רמות 13–16"],[17,20,"בוסים 17–20"]];
+const slots=c=>c.slots||(c.slot?[c.slot]:[]);
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+function toast(m,err){const t=document.getElementById("toast");
+ t.textContent=m;t.className=err?"err":"";t.style.display="block";
+ clearTimeout(t._);t._=setTimeout(()=>t.style.display="none",err?4000:1800)}
+function tog(){const l=document.getElementById("log");
+ const s=l.style.display!=="block";l.style.display=s?"block":"none";if(s)loadLog()}
+
+async function api(action,args){
+ try{const r=await fetch("/do",{method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({action,who:ME,...args})});
+  const j=await r.json(); if(j.err)toast(j.err,true); return j}
+ catch(e){toast("אין חיבור לשרת",true);return{err:e.message}}}
+async function go(a,x){await api(a,x||{});await load()}
+
+function join(){const n=document.getElementById("nm").value.trim();if(!n)return;
+ ME=n;localStorage.setItem("de-name",n);
+ document.getElementById("gate").style.display="none";
+ document.getElementById("app").style.display="block";
+ api("hello",{});connect();load();}
+
+/* ── גיבוי כפול: גם על השרת וגם כאן ── */
+function backup(){try{localStorage.setItem("de-backup",
+ JSON.stringify({t:Date.now(),rev:REV,cards:CARDS}))}catch(e){}}
+function checkBackup(){
+ try{const b=JSON.parse(localStorage.getItem("de-backup")||"null");
+  if(!b||!b.cards)return;
+  if(CARDS.length < b.cards.length-3){
+   if(confirm(`⚠ בשרת יש ${CARDS.length} קלפים אבל בגיבוי המקומי שלך יש ${b.cards.length}.\n`+
+    `זה קורה כשהשרת אותחל. לשחזר מהגיבוי?`))
+    api("restore",{cards:b.cards}).then(()=>load());
+  }}catch(e){}}
+
+/* ── חיבור מתמשך ── */
+let ES=null;
+function connect(){
+ if(ES)ES.close();
+ ES=new EventSource("/live");
+ ES.onopen=()=>{document.getElementById("conn").className="dot";
+  document.getElementById("connTxt").textContent="מחובר"};
+ ES.onerror=()=>{document.getElementById("conn").className="dot off";
+  document.getElementById("connTxt").textContent="מתחבר מחדש…"};
+ ES.onmessage=e=>{try{const d=JSON.parse(e.data);
+  if(d.rev&&d.rev!==REV)load();}catch(err){}};
+}
+setInterval(()=>{if(ME)api("ping",{editing:EDITING})},12000);
+
+async function load(){
+ try{
+  const r=await fetch("/cards");const j=await r.json();
+  CARDS=j.cards;REV=j.rev;USERS=j.users||[];
+  LOCKS={};for(const l of (j.locks||[]))LOCKS[l.key]=l.who;
+  document.getElementById("cnt").textContent=
+   CARDS.length+" קלפים · "+CARDS.reduce((a,c)=>a+(c.copies||1),0)+" בחפיסה";
+  document.getElementById("who").textContent=
+   USERS.length>1 ? "כאן עכשיו: "+USERS.join(", ") : "";
+  draw(); backup(); checkBackup();
+ }catch(e){toast("שגיאת טעינה",true)}
+}
+async function loadLog(){
+ const r=await fetch("/history");const j=await r.json();
+ document.getElementById("log").innerHTML=j.history.map(h=>{
+  const t=new Date(h.t).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+  return `<div><b>${esc(h.who)}</b> · ${esc(h.name)} · ${esc(h.field)}${h.undo?" (ביטול)":""}
+   <span style="float:left;opacity:.5">${t}</span><br>
+   <span style="opacity:.65">${esc(String(h.before)).slice(0,60)} ← ${esc(String(h.after)).slice(0,60)}</span></div>`;
+ }).join("")||"<div>אין עדיין</div>";
+}
+
+/* ── שדה עריכה ── */
+function ed(c,f,val,cls){
+ const key=c.id+":"+f, by=LOCKS[key];
+ const locked = by && by!==ME;
+ return `<div class="${cls||""}" ${locked?"":"contenteditable"} spellcheck="false"
+  data-id="${c.id}" data-f="${f}" data-key="${key}"
+  ${locked?`title="${esc(by)} עורך כרגע" style="opacity:.6"`:""}
+  onfocus="grab(this)" onblur="release(this)"
+  onkeydown="if(event.key==='Escape'){this.dataset.cancel=1;this.blur()}"
+  >${esc(val)}</div>`;
+}
+async function grab(el){
+ const k=el.dataset.key; EDITING=k;
+ el.dataset.orig=el.textContent;
+ const j=await api("lock",{key:k});
+ if(j.err){el.blur();el.contentEditable="false"}
+}
+async function release(el){
+ const k=el.dataset.key, id=el.dataset.id, f=el.dataset.f;
+ EDITING=null;
+ if(el.dataset.cancel){delete el.dataset.cancel;el.textContent=el.dataset.orig;
+  await api("unlock",{key:k});return}
+ const v=el.textContent.trim();
+ const c=CARDS.find(x=>x.id===id);
+ if(c && String(c[f]??"")!==v){
+  const j=await api("edit",{id,field:f,value:v});
+  if(j.ok&&!j.same){                       /* עדכון מקומי מיידי — בלי לצייר מחדש */
+   c[f]= v===""?undefined:v; toast("נשמר");
+   document.getElementById("cnt").textContent=
+    CARDS.length+" קלפים · "+CARDS.reduce((a,c)=>a+(c.copies||1),0)+" בחפיסה";
+   backup();
+  } else if(j.err){ el.textContent=el.dataset.orig; }
+ }
+ await api("unlock",{key:k});
+}
+async function del(id,name){if(confirm(`למחוק את "${name}"?\nאפשר לבטל עם ↶`))go("remove",{id})}
+
+/* ── ציור ── */
+function tag(c,f,label,cls){
+ const v=c[f];
+ if(v==null||v==="")return `<span class="t add" onclick="quick('${c.id}','${f}')">+ ${label}</span>`;
+ return `<span class="t ${cls}">${label} ${ed(c,f,v,"")}</span>`;
+}
+async function quick(id,f){
+ const v=prompt("ערך חדש:");
+ if(v===null)return;
+ await api("edit",{id,field:f,value:v});await load();
+}
+
+function card(c){
+ const T=[];
+ if(c.type==="monster"){
+  T.push(tag(c,"level","רמה","r"));
+  T.push(tag(c,"treasures","אוצרות","n"));
+  T.push(tag(c,"levels","דרגות","n"));
+ }
+ if(c.type==="item"){
+  T.push(tag(c,"bonus","+","g"));
+  T.push(tag(c,"slot","משבצת","n"));
+  T.push(tag(c,"gold","זהב","n"));
+  if(c.size)T.push(`<span class="t y">${esc(c.size)}</span>`);
+ }
+ if(c.aura!=null||["ability","exemption"].includes(c.type))T.push(tag(c,"aura","אאורה","y"));
+ if(c.profile!=null)T.push(tag(c,"profile","פרופיל","y"));
+ if(c.copies>1)T.push(`<span class="t y">×${c.copies}</span>`);
+ (c.tags||[]).forEach(t=>T.push(`<span class="t r">${esc(t)}</span>`));
+
+ const lockedBy = Object.entries(LOCKS).find(([k,w])=>k.startsWith(c.id+":")&&w!==ME);
+ return `<div class="c ${c.deck==='treasure'?'tre':''} ${lockedBy?'locked':''}">
+  ${lockedBy?`<span class="lockbadge">${esc(lockedBy[1])} עורך</span>`:""}
+  <div class="hd">
+   <span class="art">${ed(c,"art",c.art||"·","")}</span>
+   ${ed(c,"name",c.name,"nm")}
+   <button class="del" onclick="del('${c.id}','${esc(c.name)}')" title="מחק">✕</button>
+  </div>
+  <div class="tags">${T.join("")}</div>
+  ${ed(c,"text",c.text||"","tx")}
+  <div class="bad">${c.badStuff!=null||c.type==="monster"?"<b>רע:</b> "+ed(c,"badStuff",c.badStuff||"",""):""}</div>
+  ${ed(c,"footNote",c.footNote||"","fn")}
+ </div>`;
+}
+
+function draw(){
+ const scroll=window.scrollY;              /* שומרים מיקום גלילה */
+ const q=document.getElementById("q").value.trim();
+ const shown=CARDS.filter(c=>(TYPE==="all"||c.type===TYPE)&&
+  (!q||((c.name||"")+(c.text||"")+(c.badStuff||"")+(c.footNote||"")).includes(q)));
+ const cnt={};for(const c of CARDS)cnt[c.type]=(cnt[c.type]||0)+(c.copies||1);
+ document.getElementById("types").innerHTML=
+  `<button class="btn ${TYPE==="all"?"on":""}" onclick="setT('all')">הכל</button>`+
+  ORDER.filter(t=>cnt[t]).map(t=>
+   `<button class="btn ${TYPE===t?"on":""}" onclick="setT('${t}')">${TY[t]} <span style="opacity:.55">${cnt[t]}</span></button>`).join("");
+ let g=[];
+ if(TYPE==="monster"){for(const [lo,hi,l] of BANDS){
+   const a=shown.filter(c=>c.level>=lo&&c.level<=hi).sort((x,y)=>x.level-y.level);
+   if(a.length)g.push([l,a])}}
+ else if(TYPE==="item"){for(const sl of SLOTS){
+   const a=shown.filter(c=>slots(c).includes(sl)).sort((x,y)=>(y.bonus||0)-(x.bonus||0));
+   if(a.length)g.push([sl,a])}}
+ else{for(const t of ORDER){let a=shown.filter(c=>c.type===t);if(!a.length)continue;
+   a=t==="monster"?a.sort((x,y)=>x.level-y.level):a.sort((x,y)=>(y.bonus||y.aura||0)-(x.bonus||x.aura||0));
+   g.push([TY[t],a])}}
+ document.getElementById("out").innerHTML = g.length ? g.map(([l,a])=>
+  `<h2>${l} <s>${a.length}</s><i></i></h2><div class="grid">${a.map(card).join("")}</div>`).join("")
+  : `<div style="color:#7A9488;padding:2rem;text-align:center">לא נמצאו קלפים</div>`;
+ window.scrollTo(0,scroll);                /* מחזירים אותו */
+}
+function setT(t){TYPE=t;window.scrollTo(0,0);draw()}
+
+function sendToGame(){
+ const blob=new Blob([JSON.stringify(CARDS,null,1)],{type:"application/json"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+ a.download="cards.json";document.body.appendChild(a);a.click();
+ setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(a.href)},1500);
+ toast("הורד cards.json — העלו אותו לפרויקט המשחק");
+}
+
+if(ME){document.getElementById("gate").style.display="none";
+ document.getElementById("app").style.display="block";
+ api("hello",{});connect();load()}
+</script>
+</body>
+</html>
