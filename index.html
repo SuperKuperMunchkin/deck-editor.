@@ -96,9 +96,11 @@ h2 i{flex:1;height:1px;background:#2A3830}
     <input id="q" placeholder="חיפוש בשם ובטקסט…" oninput="draw()" style="min-width:210px">
     <span id="types"></span>
     <span style="flex:1"></span>
-    <button class="btn g" onclick="go('add')">+ קלף</button>
+    <button class="btn g" onclick="newCard()">+ קלף</button>
     <button class="btn" onclick="go('undo')">↶ בטל</button>
-    <button class="btn" onclick="location.href='/export'">ייצוא</button>
+    <button class="btn" id="expBtn" onclick="doExport()">ייצוא</button>
+    <button class="btn" onclick="document.getElementById('imp').click()">ייבוא</button>
+    <input type="file" id="imp" accept=".json" style="display:none" onchange="doImport(this)">
     <button class="btn" onclick="sendToGame()">שלח למשחק</button>
   </div>
   <div id="out"></div>
@@ -169,6 +171,7 @@ async function load(){
  try{
   const r=await fetch("/cards");const j=await r.json();
   CARDS=j.cards;REV=j.rev;USERS=j.users||[];
+  lastExp=j.lastExport||0;updateExpBtn();
   LOCKS={};for(const l of (j.locks||[]))LOCKS[l.key]=l.who;
   document.getElementById("cnt").textContent=
    CARDS.length+" קלפים · "+CARDS.reduce((a,c)=>a+(c.copies||1),0)+" בחפיסה";
@@ -295,6 +298,54 @@ function draw(){
  window.scrollTo(0,scroll);                /* מחזירים אותו */
 }
 function setT(t){TYPE=t;window.scrollTo(0,0);draw()}
+
+/* יצירת קלף — בוחרים סוג וחפיסה */
+async function newCard(){
+ const T={monster:"מפלצת",item:"חפץ",curse:"קללה",trap:"מלכודת",oneshot:"חד פעמי",
+  ability:"יכולת",exemption:"פטור",special:"עלה דרגה",class:"מקצוע",trait:"אופי",
+  base:"בסיס",enhancer:"מחזק",weakener:"מחליש",origin:"סיפור מקור",rule:"כלל בית"};
+ const keys=Object.keys(T);
+ const list=keys.map((k,i)=>`${i+1}. ${T[k]}`).join("\n");
+ const pick=prompt("איזה סוג קלף?\n\n"+list+"\n\nהקלידו מספר:");
+ if(!pick)return;
+ const t=keys[parseInt(pick)-1];
+ if(!t){toast("מספר לא תקין",true);return}
+ const deck = ["item","oneshot","special"].includes(t) ? "treasure" : "door";
+ const j=await api("add",{type:t,deck});
+ if(j.id){TYPE=t;await load();
+  const el=document.querySelector(`[data-id="${j.id}"][data-f="name"]`);
+  if(el){el.scrollIntoView({block:"center"});el.focus();
+   const r=document.createRange();r.selectNodeContents(el);
+   const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}}
+}
+
+/* ייצוא — מסמן שנשמר גיבוי */
+function doExport(){ location.href="/export";
+ setTimeout(()=>{lastExp=Date.now();updateExpBtn()},600) }
+
+/* ייבוא — מחזיר קובץ שירד קודם */
+async function doImport(input){
+ const f=input.files[0]; input.value="";
+ if(!f)return;
+ try{
+  const cards=JSON.parse(await f.text());
+  if(!Array.isArray(cards)){toast("הקובץ לא תקין",true);return}
+  if(!confirm(`הקובץ מכיל ${cards.length} קלפים.\nזה יחליף את כל מה שיש עכשיו (${CARDS.length} קלפים).\n\nלהמשיך?`))return;
+  const j=await api("import",{cards});
+  if(j.ok){toast(`יובאו ${j.n} קלפים`);await load()}
+ }catch(e){toast("קריאת הקובץ נכשלה",true)}
+}
+
+/* אזהרת גיבוי */
+let lastExp=0;
+function updateExpBtn(){
+ const b=document.getElementById("expBtn"); if(!b)return;
+ const days = lastExp ? (Date.now()-lastExp)/86400000 : 99;
+ if(days>3){ b.style.background="#7A2E1E"; b.style.color="#F0C0B0"; b.style.border="0";
+  b.textContent = lastExp ? `ייצוא ⚠ (${Math.floor(days)} ימים)` : "ייצוא ⚠ (מעולם לא)"; }
+ else { b.style.background=""; b.style.color=""; b.style.border="";
+  b.textContent="ייצוא ✓"; }
+}
 
 function sendToGame(){
  const blob=new Blob([JSON.stringify(CARDS,null,1)],{type:"application/json"});
